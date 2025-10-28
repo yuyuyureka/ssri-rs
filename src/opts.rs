@@ -17,6 +17,7 @@ enum Hasher {
     Sha384(sha2::Sha384),
     Sha512(sha2::Sha512),
     Xxh3(Box<xxhash_rust::xxh3::Xxh3>),
+    B3(blake3::Hasher),
 }
 
 impl Debug for Hasher {
@@ -27,6 +28,7 @@ impl Debug for Hasher {
             Self::Sha384(arg0) => f.debug_tuple("Sha384").field(arg0).finish(),
             Self::Sha512(arg0) => f.debug_tuple("Sha512").field(arg0).finish(),
             Self::Xxh3(_arg0) => f.debug_tuple("Xxh3").finish(),
+            Self::B3(_arg0) => f.debug_tuple("B3").finish(),
         }
     }
 }
@@ -73,6 +75,7 @@ impl IntegrityOpts {
             Algorithm::Sha384 => Hasher::Sha384(sha2::Sha384::new()),
             Algorithm::Sha512 => Hasher::Sha512(sha2::Sha512::new()),
             Algorithm::Xxh3 => Hasher::Xxh3(Box::new(xxhash_rust::xxh3::Xxh3::new())),
+            Algorithm::B3 => Hasher::B3(blake3::Hasher::new()),
         });
         self
     }
@@ -88,6 +91,9 @@ impl IntegrityOpts {
                 Hasher::Sha384(h) => digest::Digest::update(h, input),
                 Hasher::Sha512(h) => digest::Digest::update(h, input),
                 Hasher::Xxh3(h) => h.update(input),
+                Hasher::B3(h) => {
+                    h.update(input);
+                }
             }
         }
     }
@@ -118,6 +124,10 @@ impl IntegrityOpts {
                     Hasher::Xxh3(h) => (
                         Algorithm::Xxh3,
                         BASE64_STANDARD.encode(h.digest128().to_be_bytes()),
+                    ),
+                    Hasher::B3(h) => (
+                        Algorithm::B3,
+                        BASE64_STANDARD.encode(blake3::Hasher::finalize(&h).as_bytes()),
                     ),
                 };
                 Hash {
